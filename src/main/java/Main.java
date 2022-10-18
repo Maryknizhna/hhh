@@ -1,13 +1,13 @@
 import java.util.Scanner;
 import java.io.*;
 
+
 public class Main {
     public static void main(String[] args) throws IOException {
         Scanner scan = new Scanner(System.in);
         String[] productName = {"Хлеб", "Крупа", "Молоко"};
         int[] prices = {20, 80, 35};
         ClientLog clientLog = new ClientLog();
-
 
         File file = new File("basket.txt");
         Basket basket = new Basket(productName, prices);
@@ -55,5 +55,8 @@ public class Main {
         basket.printCart();
 
         clientLog.exportAsCSV(clientLog.file);
+
+        XML xml = new XML();
+        xml.xml();
     }
 }
