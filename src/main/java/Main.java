@@ -6,6 +6,8 @@ public class Main {
         Scanner scan = new Scanner(System.in);
         String[] productName = {"Хлеб", "Крупа", "Молоко"};
         int[] prices = {20, 80, 35};
+        ClientLog clientLog = new ClientLog();
+
 
         File file = new File("basket.txt");
         Basket basket = new Basket(productName, prices);
@@ -44,11 +46,14 @@ public class Main {
                 System.out.println("Продукт не существует!");
                 continue;
             }
-
+            clientLog.log(productNum, productAmount);
             basket.addToCart(productNum, productAmount);
         }
 
+
+        basket.toJsonFile();
         basket.printCart();
-        basket.saveText(file);
+
+        clientLog.exportAsCSV(clientLog.file);
     }
 }

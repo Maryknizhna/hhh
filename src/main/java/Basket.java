@@ -1,7 +1,14 @@
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.io.*;
+import java.util.Map;
+
 public class Basket {
     private String[] productName;
     private int[] prices;
@@ -68,6 +75,39 @@ public class Basket {
         basket.printCart();
         return basket;
 
+    }
+
+    public void toJsonFile() {
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        try (FileWriter writer = new FileWriter("basket.json")) {
+            Map<String, Object> food = new HashMap<>();
+            food.put("productName", productName);
+            food.put("prices", prices);
+            food.put("productCount", productCount);
+            gson.toJson(food, writer);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void fromJsonFile() {
+        try {
+            Gson gson = new Gson();
+            Reader reader = new FileReader("basket.json");
+            Basket basket = gson.fromJson(reader, Basket.class);
+            //System.out.println(basket);
+            System.out.println(Arrays.toString(basket.productName) + "\n"
+                    + Arrays.toString(basket.prices) + "\n"
+                    + Arrays.toString(basket.productCount));
+            reader.close();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     protected void printAllProducts() {
