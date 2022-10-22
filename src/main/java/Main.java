@@ -46,10 +46,10 @@ public class Main {
                 System.out.println("Продукт не существует!");
                 continue;
             }
-            clientLog.log(productNum, productAmount);
             basket.addToCart(productNum, productAmount);
-        }
+            clientLog.log(productNum, productAmount);
 
+        }
 
         basket.toJsonFile();
         basket.printCart();
