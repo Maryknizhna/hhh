@@ -1,62 +1,126 @@
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.Scanner;
-import java.io.*;
-
-
 public class Main {
-    public static void main(String[] args) throws IOException {
-        Scanner scan = new Scanner(System.in);
-        String[] productName = {"Хлеб", "Крупа", "Молоко"};
-        int[] prices = {20, 80, 35};
-        ClientLog clientLog = new ClientLog();
+    public static void main(String[] args) {
+        String[] products = {"Хлеб", "Крупа", "Молоко"};
+        int[] prices = {20, 60, 65};
+        ClientLog clientlog = new ClientLog();
 
-        File file = new File("basket.txt");
-        Basket basket = new Basket(productName, prices);
-
-        if (file.exists()) {
-            Basket.loadFromTxtFile(file);
-        } else {
-            basket.printAllProducts();
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = null;
+        Document doc = null;
+        try {
+            builder = factory.newDocumentBuilder();
+            doc = builder.parse(new File("shop.xml"));
+            doc.getDocumentElement().normalize();
+        } catch (ParserConfigurationException | IOException | SAXException e) {
+            throw new RuntimeException(e);
         }
 
+        boolean configLoadEnabled;
+        String configLoadFileName;
+        String configLoadFormat;
+        boolean configSaveEnabled;
+        String configSaveFileName;
+        String configSaveFormat;
+        boolean configLogEnabled;
+        String configLogFileName;
+
+        try {
+            XPathExpression xp = XPathFactory.newInstance().newXPath().compile("//config/load/enabled");
+            configLoadEnabled = Boolean.parseBoolean(xp.evaluate(doc));
+            xp = XPathFactory.newInstance().newXPath().compile("//config/load/fileName");
+            configLoadFileName = xp.evaluate(doc);
+            xp = XPathFactory.newInstance().newXPath().compile("//config/load/format");
+            configLoadFormat = xp.evaluate(doc);
+
+            xp = XPathFactory.newInstance().newXPath().compile("//config/save/enabled");
+            configSaveEnabled = Boolean.parseBoolean(xp.evaluate(doc));
+            xp = XPathFactory.newInstance().newXPath().compile("//config/save/fileName");
+            configSaveFileName = xp.evaluate(doc);
+            xp = XPathFactory.newInstance().newXPath().compile("//config/save/format");
+            configSaveFormat = xp.evaluate(doc);
+
+            xp = XPathFactory.newInstance().newXPath().compile("//config/log/enabled");
+            configLogEnabled = Boolean.parseBoolean(xp.evaluate(doc));
+            xp = XPathFactory.newInstance().newXPath().compile("//config/log/fileName");
+            configLogFileName = xp.evaluate(doc);
+
+        } catch (XPathExpressionException e) {
+            throw new RuntimeException(e);
+        }
+
+        Basket basket;
+        File basketFile = new File(configLoadFileName);
+        if (configLoadEnabled && basketFile.exists() && !basketFile.isDirectory()) {
+            if (configLoadFormat.equals("json")) {
+                basket = Basket.loadFromJson(basketFile);
+            }
+            else {
+                basket = Basket.loadFromTxtFile(basketFile);
+            }
+        } else {
+            basket = new Basket(products, prices);
+        }
+
+        System.out.println("Список возможных товаров для покупки");
+        for (int i = 0; i < products.length; i++) {
+            System.out.println((i + 1) + ". " + products[i] + " " +
+                    prices[i] + " руб.");
+        }
+
+
+        Scanner scanner = new Scanner(System.in);
         while (true) {
-            System.out.println("Выберите продукт и кол-во или введите `end`");
-            String input = scan.nextLine();
-            if ("end".equals(input)) {
+            System.out.println("Выберите товар и количество или введите `end`");
+            String input = scanner.nextLine();
+            if (input.equals("end")) {
                 break;
             }
-
-            String[] productAndCount = input.split(" ");
-            int productNum;
+            String[] userData = input.split(" ");
+            if (userData.length != 2) {
+                System.out.println("Неверное количество данных");
+                continue;
+            }
+            int productNumber;
+            int productCount;
             try {
-                productNum = Integer.parseInt(productAndCount[0]) - 1;
+                productNumber = Integer.parseInt(userData[0]) - 1;
+                if ((productNumber < 0) || (productNumber + 1 > prices.length)) {
+                    System.out.println("Неверный номер продукта");
+                    continue;
+                }
+                productCount = Integer.parseInt(userData[1]);
+                if (productCount < 0) {
+                    System.out.println("Неверное количество продукта");
+                    continue;
+                }
             } catch (NumberFormatException e) {
-                System.out.println("Number format!!!");
+                System.out.println("Неверный формат числа");
                 continue;
             }
-
-            int productAmount;
-            try {
-                productAmount = Integer.parseInt(productAndCount[1]);
-            } catch (NumberFormatException e) {
-                System.out.println("Number format!!!");
-                continue;
+            basket.addToCart(productNumber, productCount);
+            clientlog.log(productNumber, productCount);
+            if (configSaveEnabled) {
+                if (configSaveFormat.equals("json")) {
+                    basket.saveJson(new File(configSaveFileName));
+                } else if (configSaveFormat.equals("csv")) {
+                    basket.saveTxt(new File(configSaveFileName));
+                }
             }
-
-            if (productAmount > productName.length || productAmount <= 0) {
-                System.out.println("Продукт не существует!");
-                continue;
-            }
-            basket.addToCart(productNum, productAmount);
-            clientLog.log(productNum, productAmount);
-
         }
 
-        basket.toJsonFile();
         basket.printCart();
-
-        clientLog.exportAsCSV(clientLog.file);
-
-        XML xml = new XML();
-        xml.xml();
+        if (configLogEnabled) {
+            File logFile = new File(configLogFileName);
+            clientlog.exportAsCSV(logFile);
+        }
     }
 }

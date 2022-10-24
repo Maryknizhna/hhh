@@ -1,39 +1,30 @@
-import java.io.*;
-import java.util.Scanner;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import au.com.bytecode.opencsv.CSVWriter;
+import org.javatuples.Pair;
 
 public class ClientLog {
-    protected File file;
+    private ArrayList<Pair<Integer, Integer>> shoppingActions;
 
-    protected void log(int productNum, int amount) {
-        file = new File("log.txt");
-        int correctNumber = productNum + 1;
-        try (FileWriter out = new FileWriter(file, true)) {
-            out.write(correctNumber + ", " + amount + "\n");
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException("File not found!!!");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public ClientLog() {
+        shoppingActions = new ArrayList<>();
     }
 
-    public void exportAsCSV(File csvFile) {
-        try {
-            FileWriter writer;
-            File txtFile = new File("log.txt");
-            Scanner scan = new Scanner(file);
-            csvFile = new File("log.csv");
-            txtFile.createNewFile();
-            writer = new FileWriter(csvFile);
-            writer.append("productNum, amount" + "\n");
-            while (scan.hasNext()) {
-                String csv = scan.nextLine().replace("|", ",");
-                System.out.println(csv);
-                writer.append(csv);
-                writer.append("\n");
-                writer.flush();
+    public void log(int productNum, int amount){
+        shoppingActions.add(new Pair<>(productNum, amount));
+    }
+
+    public void exportAsCSV(File txtFile){
+        try (CSVWriter writer = new CSVWriter(new FileWriter(txtFile))){
+            writer.writeNext(new String[]{"productNum", "amount"});
+
+            for (Pair<Integer, Integer> action : shoppingActions) {
+                writer.writeNext(new String[]{action.getValue0().toString(), action.getValue1().toString()});
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 }

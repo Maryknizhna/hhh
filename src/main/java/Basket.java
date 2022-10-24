@@ -1,118 +1,115 @@
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
-import java.io.*;
 
+import java.io.*;
+import java.nio.file.Files;
+import java.util.Arrays;
 
 public class Basket {
-    private String[] productName;
+    private String[] products;
     private int[] prices;
-    private int[] productCount;
+    private int productCount;
+    private int[] itemsInCart;
+    private int sumProducts;
 
-    public Basket(String[] productName, int[] prices) {
-        this.productName = productName;
+    public Basket(String[] products, int[] prices) {
+        this.products = products;
         this.prices = prices;
-        this.productCount = new int[prices.length];
+
+        productCount = products.length;
+        itemsInCart = new int[productCount];
     }
 
-    public void setProductCount(int[] productCount) {
-        this.productCount = productCount;
+    public void addToCart(int productNum, int amount) {
+        sumProducts += prices[productNum] * amount;
+        itemsInCart[productNum] += amount;
     }
 
-    protected void addToCart(int productNum, int amount) {
-        productCount[productNum] += amount;
-    }
-
-    protected void printCart() {
-        System.out.println("Ваша корзина покупок:");
-        int sum = 0;
-        for (int i = 0; i < productCount.length; i++) {
-            int count = productCount[i];
-            int sumProducts = prices[i] * count;
-            if (count != 0) {
-                sum += sumProducts;
-                System.out.println(productName[i] + " " + count + ": " + sumProducts + " рублей");
+    public void printCart() {
+        System.out.println("Ваша корзина:");
+        for (int i = 0; i < productCount; i++) {
+            if (itemsInCart[i] != 0) {
+                System.out.println(products[i] + " " +
+                        itemsInCart[i] + " шт " +
+                        prices[i] + " руб/шт " +
+                        itemsInCart[i] * prices[i] + " руб.");
             }
         }
-        System.out.println("Всего: " + sum + " рублей");
+        System.out.println("Итого " + sumProducts + " руб");
     }
 
-    protected void saveText(File textFile) {
-        try (PrintWriter out = new PrintWriter(textFile);) {
-            for (int i = 0; i < productName.length; i++) {
-                out.println(productName[i] + " " + prices[i] + " " + productCount[i]);
+    public void saveTxt(File textFile) {
+        try (PrintWriter writer = new PrintWriter(textFile)) {
+            for (String product : products) {
+                writer.print(product);
+                writer.print(" ");
             }
+            writer.println();
 
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException("Файл не найден!");
+            for (int price : prices) {
+                writer.print(price);
+                writer.write(" ");
+            }
+            writer.println();
 
-        }
-
-    }
-
-    public static Basket loadFromTxtFile(File textFile) throws IOException {
-        Path path = textFile.toPath();
-        List<String> basketList = Files.readAllLines(path);
-
-        String[] productName = new String[basketList.size()];
-        int[] prices = new int[basketList.size()];
-        int[] productsCount = new int[basketList.size()];
-
-        for (int i = 0; i <= basketList.size() - 1; i++) {
-            String[] data = basketList.get(i).split(" ");
-            productName[i] = data[0];
-            prices[i] = Integer.parseInt(data[1]);
-            productsCount[i] = Integer.parseInt(data[2]);
-        }
-
-        Basket basket = new Basket(productName, prices);
-        basket.setProductCount(productsCount);
-        basket.printCart();
-        return basket;
-
-    }
-
-    public void toJsonFile() {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        try (FileWriter writer = new FileWriter("basket.json")) {
-            gson.toJson(this, writer);
+            for (int item : itemsInCart) {
+                writer.print(item);
+                writer.write(" ");
+            }
+            writer.println();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Can't open file for writing");
         }
-
     }
 
-    @Override
-    public String toString() {
-        return "Basket: {" +
-                "productsName: " + (Arrays.deepToString(productName)) +
-                "\n productsCount: " + (Arrays.toString(productCount)) +
-                "\n prices:" + (Arrays.toString(prices)) +
-                '}';
+    public void saveJson(File fileToSave){
+        Gson gson = new Gson();
+        String json = gson.toJson(this);
+        try (FileWriter fileWriter = new FileWriter(fileToSave)){
+            fileWriter.write(json);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
+    public void SetCart(int[] cart) {
+        this.itemsInCart = cart;
+        sumProducts = 0;
+        for (int i = 0; i < prices.length; i++) {
+            sumProducts += prices[i] * itemsInCart[i];
+        }
+    }
 
-    public void fromJsonFile() {
+    public static Basket loadFromTxtFile(File textFile) {
+        String[] products = null;
+        int[] prices = null;
+        int[] itemsInCart = null;
+        try (BufferedReader reader = new BufferedReader(new FileReader(textFile))) {
+            String fileLine = reader.readLine();
+            products = fileLine.split(" ");
+
+            fileLine = reader.readLine();
+            prices = Arrays.stream(fileLine.split(" ")).mapToInt(Integer::parseInt).toArray();
+
+            fileLine = reader.readLine();
+            itemsInCart = Arrays.stream(fileLine.split(" ")).mapToInt(Integer::parseInt).toArray();
+
+            Basket basket = new Basket(products, prices);
+            basket.SetCart(itemsInCart);
+
+            return basket;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Basket loadFromJson(File textFile) {
         try {
+            String jsonContent = Files.readString(textFile.toPath());
             Gson gson = new Gson();
-            Reader reader = new FileReader("basket.json");
-            Basket basket = gson.fromJson(reader, Basket.class);
-            System.out.println(basket);
-            reader.close();
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
-
-    protected void printAllProducts() {
-        System.out.println("Список возможных продуктов для покупки");
-
-        for (int i = 0; i < productName.length; i++) {
-            System.out.println((i + 1) + "." + productName[i] + " - " + prices[i] + " рублей");
+            Basket basket = gson.fromJson(jsonContent, Basket.class);
+            return basket;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
